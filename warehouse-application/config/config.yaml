@@ -1,0 +1,6 @@
+PostgresConfig:
+  user     : "kare"
+  password : ""
+  host     : "localhost"
+  dbname   : "warehouse"
+  sslmode  : "disable"
