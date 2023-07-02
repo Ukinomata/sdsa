@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Menu</title>
+</head>
+<body>
+    <label id="status">Ваш id сессии:</label>
+    <input type="button" id="accept"> Получить
+    <script>
+      document.getElementById("accept").addEventListener("click", function (){
+        let stat = document.cookie
+        document.getElementById("status").innerHTML = "Ваш id сессии:" + stat
+      })
+    </script>
+</body>
+</html>

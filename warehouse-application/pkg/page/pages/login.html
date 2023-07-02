@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" type="text/css" href="login.css">
+	<title>Авторизация пользователя</title>
+</head>
+<body>
+<h1>Авторизация пользователя</h1>
+
+<form id="loginForm">
+	<label for="username">Имя пользователя:</label>
+	<input type="text" id="username" name="username" required><br><br>
+
+	<label for="password">Пароль:</label>
+	<input type="password" id="password" name="password" required><br><br>
+
+	<input type="submit" value="Войти">
+
+	<label id="result"></label>
+</form>
+
+<script>
+	document.getElementById("loginForm").addEventListener("submit", function(event) {
+		event.preventDefault();
+		let xhr = new XMLHttpRequest();
+		let url = "http://localhost:8080/LoginUser";
+		xhr.open("POST", url, true);
+		xhr.setRequestHeader("Content-Type", "application/json");
+		let username = document.querySelector('#username').value;
+		let password = document.querySelector('#password').value;
+		xhr.onreadystatechange = function () {
+			let result = document.querySelector('#result')
+			if (this.responseText === null){
+				result.innerHTML = "hjj" + this.responseText
+				console.log("successful")
+				// window.location.replace("http://localhost:8080/mainMenu")
+			} else {
+				result.innerHTML = this.responseText
+			}
+		};
+		let data = JSON.stringify({
+			"username": username,
+			"password": password
+		});
+		xhr.send(data);
+	});
+</script>
+</body>
+</html>
