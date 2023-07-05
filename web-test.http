@@ -1,0 +1,17 @@
+GET localhost:8080/health
+Accept: application/json
+
+###
+
+GET localhost:8080/people
+Accept: application/json
+
+###
+
+POST http://localhost:8080/people
+Content-Type: application/json
+
+{
+  "name": "Ukino",
+  "age": 19
+}

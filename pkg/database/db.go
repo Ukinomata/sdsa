@@ -11,7 +11,7 @@ var (
 	user     = "postgres"
 	password = "ukino"
 	host     = "localhost"
-	dbname   = "warehouseApp"
+	dbname   = "WebApp"
 	sslmode  = "disable"
 )
 

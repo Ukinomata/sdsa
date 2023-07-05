@@ -2,29 +2,116 @@ package server
 
 import (
 	"fmt"
+	"github.com/gorilla/sessions"
+	"log"
 	"net/http"
+	"warehouse-application/internal/user"
+	"warehouse-application/pkg/helper"
 )
 
-type input struct {
-	username string `json:"username"`
-	password string `json:"password"`
-}
+var store *sessions.CookieStore
 
 func StartServer() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"UTF-8\">\n    <title>Авторизация</title>\n  </head>\n  <body>\n    <h1>Авторизация</h1>\n    <form id=\"login-form\">\n      <label for=\"username\">Логин:</label>\n      <input type=\"text\" id=\"username\" name=\"username\"><br>\n      <label for=\"password\">Пароль:</label>\n      <input type=\"password\" id=\"password\" name=\"password\"><br>\n      <button type=\"submit\">Войти</button>\n    </form>\n    <br>\n    <form id=\"register-form\">\n      <label for=\"username\">Логин:</label>\n      <input type=\"text\" id=\"username\" name=\"username\"><br>\n      <label for=\"password\">Пароль:</label>\n      <input type=\"password\" id=\"password\" name=\"password\"><br>\n      <button type=\"submit\">Зарегистрироваться</button>\n    </form>\n    <script>\n      const registerForm = document.querySelector('#register-form');\n      registerForm.addEventListener('submit', (event) => {\n        event.preventDefault();\n        const formData = new FormData(registerForm);\n        const xhr = new XMLHttpRequest();\n        xhr.open('POST', 'http://localhost:8080/users');\n        xhr.setRequestHeader('Content-Type', 'application/json');\n        xhr.onload = () => {\n          if (xhr.status === 200) {\n            console.log(xhr.responseText);\n            // обработка успешного ответа от сервера\n          } else {\n            console.error(xhr.statusText);\n            // обработка ошибки\n          }\n        };\n        const data = {\n          username: formData.get('username'),\n          password: formData.get('password')\n        };\n        xhr.send(JSON.stringify(data));\n      });\n    </script>\n  </body>\n</html>")
-	})
-	http.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
-			fmt.Println("post")
+	store = sessions.NewCookieStore([]byte("ukinoshito-ukino"))
+	_ = store
+	http.HandleFunc("/signup", signUpHandler)
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/profile", profileHandler)
+	http.HandleFunc("/logout", logountHandler)
+
+	log.Fatal(http.ListenAndServe("localhost:8080", nil))
+}
+
+func signUpHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		usr := &user.User{
+			Username: username,
+			Password: password,
 		}
-		err := r.ParseForm()
+		usr.SignUpUser()
+		http.Redirect(w, r, "/profile", http.StatusFound)
+		return
+	default:
+		helper.LoadPage(w, "signup", nil)
+	}
+}
+
+func logountHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, "session-name")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	session.Options.MaxAge = -1
+	err = session.Save(r, w)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/login", http.StatusFound)
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		usr := &user.User{
+			Username: username,
+			Password: password,
+		}
+		err := usr.CorrectData()
+
 		if err != nil {
-			fmt.Println("error")
-			w.WriteHeader(http.StatusBadRequest)
+			log.Println(err)
+			return
 		}
-		fmt.Println(r.Form.Get("username"))
-		fmt.Println(r.Form.Get("password"))
-	})
-	http.ListenAndServe("localhost:8080", nil)
+
+		session, err := store.Get(r, "session-name")
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		session.Values["userID"] = usr.Id
+		fmt.Println(session.Values["userID"])
+		err = session.Save(r, w)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		http.Redirect(w, r, "/profile", http.StatusFound)
+		return
+	default:
+		helper.LoadPage(w, "login", nil)
+	}
+}
+
+func profileHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, "session-name")
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	userID, ok := session.Values["userID"].(uint)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	usr := &user.User{
+		Id: userID,
+	}
+	usr.GetInfo()
+	helper.LoadPage(w, "profile", usr)
 }

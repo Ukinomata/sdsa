@@ -1,12 +1,9 @@
 package main
 
 import (
-	"warehouse-application/pkg/database"
+	"warehouse-application/pkg/server"
 )
 
 func main() {
-	db := database.ConnectToDB()
-
-	_ = db
-
+	server.StartServer()
 }
