@@ -1,10 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <title>Информация о складе</title>
+
 </head>
 <body>
-$END$
+<h1>Содержимое склада и его карточки:</h1>
+<ul>
+    {{range $value := .Stock}}
+        <li>ID карточки: {{$value.ProductID}}<br>
+            Название карточки: {{$value.ProductName}}<br>
+            Стоимость единицы товара: {{$value.Price}}<br>
+            Кол-во товара в наличии: {{$value.Amount}}<br></li>
+    {{end}}
+</ul>
+<h1>Ваши карточки:</h1>
+    {{range $value := .Carts.Carts}}
+        <li>ID товара: {{.ProductID}}<br>Наименование товара: {{.ProductName}}<br>Цена единицы товара: {{.Price}}</li>
+        <form method="post">
+            <label for="amount">Кол-во:</label>
+            <input type="number" id="amount" name="amount" required><br>
+                <button class="button" id="productID" name="productID" value="{{.ProductID}}">Добавить на склад </button>
+        </form><br><br>
+{{end}}
+<a href="/stocks">Back to Stock List</a><br>
+<a href="/profile">Back to Profile</a><br>
+<a href="/logout">Logout</a>
 </body>
 </html>

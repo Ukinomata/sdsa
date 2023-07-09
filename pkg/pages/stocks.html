@@ -2,12 +2,25 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Карточки товаров</title>
 </head>
 <body>
-<h1>Your stocks:</h1>
-<a href="/logout">Logount</a><br>
-<a href="/profile">Back to Profile</a>
-<a href="/carts">Carts</a>
+<h1>Мои склады:</h1>
+<ul>
+    {{range $key, $value := .MapVariable}}
+        <li>{{$key}}: {{$value}}</li>
+            <form action="/stockinfo" method="get">
+               <button class="button" id="button" name="button" value="{{$key}}">Информация о складе </button>
+            </form>
+    {{end}}
+</ul>
+<h1>Новый склад</h1>
+<form action="/stocks" method="post">
+    <label for="stockName">Название склада:</label>
+    <input type="text" id="stockName" name="stockName" required><br><br>
+    <input type="submit" value="Создать">
+</form><br><br>
+<a href="/profile">Back to Profile</a><br>
+<a href="/logout">Logout</a>
 </body>
 </html>
