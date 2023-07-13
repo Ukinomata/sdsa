@@ -52,7 +52,7 @@ func (h *handler) signUpHandler(w http.ResponseWriter, r *http.Request) {
 			Username: username,
 			Password: password,
 		}
-		usr.SignUpUser()
+		usr.SignUpUser(h.logger)
 		http.Redirect(w, r, "/profile", http.StatusFound)
 		return
 	default:
@@ -89,7 +89,7 @@ func (h *handler) loginHandler(w http.ResponseWriter, r *http.Request) {
 			Username: username,
 			Password: password,
 		}
-		err := usr.CorrectData()
+		err := usr.CorrectData(h.logger)
 
 		if err != nil {
 			h.logger.Info(err)
@@ -135,7 +135,7 @@ func (h *handler) profileHandler(w http.ResponseWriter, r *http.Request) {
 	usr := &user.User{
 		Id: userID,
 	}
-	usr.GetInfo()
+	usr.GetInfo(h.logger)
 	helper.LoadPage(w, "profile", usr)
 }
 
