@@ -10,7 +10,7 @@ import (
 
 type Stock struct {
 	UserId    uint
-	StockName string
+	StockName string `json:"stockName"`
 }
 
 //функция которая создает новый склад
@@ -78,10 +78,11 @@ func ShowStocksOfUser(userID uint) superStock {
 //информация о товаре внутри склада и его количестве
 
 type StockInfo struct {
-	ProductID   uint
-	ProductName string
-	Price       uint
-	Amount      uint
+	StockID     uint
+	ProductID   uint   `json:"productID"`
+	ProductName string `json:"productName"`
+	Price       uint   `json:"price"`
+	Amount      uint   `json:"amount"`
 }
 
 //заполнить структуру stockInfo при наличии product_id
@@ -126,6 +127,7 @@ func ShowInfoAbountStock(stockID, userID uint) AllInfo {
 			return AllInfo{}
 		}
 		stk.FillStock()
+		stk.StockID = stockID
 
 		result.Stock = append(result.Stock, stk)
 	}
@@ -135,4 +137,45 @@ func ShowInfoAbountStock(stockID, userID uint) AllInfo {
 	}
 	result.Carts = cart.ShowCartsOfUser(userID)
 	return result
+}
+
+func (s *StockInfo) CorrectAmount() {
+	db := database.ConnectToDB()
+	defer db.Close()
+
+	data := `UPDATE stock SET amount = $1 WHERE id = $2 and product_id = $3`
+
+	if _, err := db.Exec(data, s.Amount, s.StockID, s.ProductID); err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func (s *StockInfo) AppendCartToStock(userID uint) {
+	db := database.ConnectToDB()
+	defer db.Close()
+
+	data := `INSERT INTO stock(id, user_id,product_id, amount)
+SELECT $1,$2,$3,$4
+WHERE NOT EXISTS(
+    SELECT * FROM stock
+    WHERE id = $1 and user_id = $2 and product_id = $3
+) `
+
+	if _, err := db.Exec(data, s.StockID, userID, s.ProductID, s.Amount); err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func (s *StockInfo) DeleteFromStock() {
+	db := database.ConnectToDB()
+	defer db.Close()
+
+	data := `DELETE FROM stock WHERE id = $1 and product_id = $2`
+
+	if _, err := db.Exec(data, s.StockID, s.ProductID); err != nil {
+		log.Println(err)
+		return
+	}
 }

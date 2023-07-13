@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"github.com/gorilla/sessions"
 	"log"
 	"net/http"
@@ -125,7 +126,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 	helper.LoadPage(w, "profile", usr)
 }
 
-// страница с карточками
+// страница с карточками +
 func cartsHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session-name")
 	if err != nil {
@@ -139,21 +140,46 @@ func cartsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.Method {
-	case http.MethodPost:
+	case http.MethodPatch:
+		fmt.Println("IT IS METHOD PATCH")
 		crt := &cart.Cart{
-			UserID:      userID,
-			ProductName: r.FormValue("productName"),
+			UserID: userID,
 		}
-		product, _ := strconv.Atoi(r.FormValue("price"))
-		crt.Price = uint(product)
+
+		helper.Unmarshal(r, crt)
+
+		crt.CorrectPrice()
+
+		fmt.Println(crt)
+	case http.MethodDelete:
+		fmt.Println("IT IS METHOD DELETE")
+		crt := &cart.Cart{
+			UserID: userID,
+		}
+
+		helper.Unmarshal(r, crt)
+
+		crt.DeleteCart()
+
+		fmt.Println(crt)
+	case http.MethodPost:
+		fmt.Println("IT IS POST")
+		crt := &cart.Cart{
+			UserID: userID,
+		}
+
+		helper.Unmarshal(r, crt)
+
+		fmt.Println(crt)
 		crt.AppendCartToDB()
-		helper.LoadPage(w, "carts", cart.ShowCartsOfUser(userID))
+		return
 	default:
+		fmt.Println("IT IS DEFAULT")
 		helper.LoadPage(w, "carts", cart.ShowCartsOfUser(userID))
 	}
 }
 
-// страница со складами
+// страница со складами +
 func stocksHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session-name")
 	if err != nil {
@@ -170,13 +196,17 @@ func stocksHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
+		fmt.Println("IT IS POST")
 		stck := &stock.Stock{
-			UserId:    userID,
-			StockName: r.FormValue("stockName"),
+			UserId: userID,
 		}
+
+		helper.Unmarshal(r, stck)
+		fmt.Println(stck)
 		stck.CreateNewStock()
-		helper.LoadPage(w, "stocks", stock.ShowStocksOfUser(userID))
+		return
 	default:
+		fmt.Println("IT IS DEFAULT")
 		helper.LoadPage(w, "stocks", stock.ShowStocksOfUser(userID))
 	}
 
@@ -200,22 +230,46 @@ func stockInfoHandler(w http.ResponseWriter, r *http.Request) {
 	stockID, _ := strconv.Atoi(string(st[len(st)-1]))
 
 	switch r.Method {
-	case http.MethodGet:
-		helper.LoadPage(w, "stockinfo", stock.ShowInfoAbountStock(uint(stockID), userID))
-	case http.MethodPost:
-		productID, _ := strconv.Atoi(r.FormValue("productID"))
-		amount, _ := strconv.Atoi(r.FormValue("amount"))
-
-		crt := cart.Cart{
-			ProductID:   uint(productID),
-			UserID:      userID,
-			ProductName: "",
-			Price:       0,
+	case http.MethodDelete:
+		fmt.Println("IT IS DELETE METHOD")
+		stk := &stock.StockInfo{
+			StockID: uint(stockID),
 		}
 
-		crt.AppendCartToStock(uint(stockID), uint(amount))
-		helper.LoadPage(w, "stockinfo", stock.ShowInfoAbountStock(uint(stockID), userID))
+		helper.Unmarshal(r, stk)
+
+		fmt.Println(stk)
+		stk.DeleteFromStock()
+
+	case http.MethodPatch:
+		fmt.Println("IT IS PATCH")
+		stk := &stock.StockInfo{
+			StockID: uint(stockID),
+			Amount:  0,
+		}
+
+		helper.Unmarshal(r, stk)
+		fmt.Println(stk)
+		stk.CorrectAmount()
+		return
+	case http.MethodPost:
+		fmt.Println("IT IS POST METHOD")
+		stk := &stock.StockInfo{
+			StockID: uint(stockID),
+		}
+
+		helper.Unmarshal(r, stk)
+		fmt.Println(stk)
+		stk.AppendCartToStock(userID)
+		return
 	default:
-		http.Error(w, "invalid http method", http.StatusMethodNotAllowed)
+		fmt.Println("IT IS DEFAULT METHOD")
+		helper.LoadPage(w, "stockinfo", stock.ShowInfoAbountStock(uint(stockID), userID))
 	}
 }
+
+//todo добавить новый логгер, создать отдельную директорию под ошибки,  и удалять карточки
+
+//todo после добавления товара и сразу изменения его количества добавляется новый товар.Думаю нужно переписать передачу данных на java script вместо html
+
+//todo реализовать получение данных с бд с использованием java script

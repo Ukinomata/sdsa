@@ -7,20 +7,97 @@
 <body>
 <h1>Мои карточки</h1>
 <ul>
-    {{range  .Carts}}
-        <li>ID товара: {{.ProductID}}<br>Наименование товара: {{.ProductName}}<br>Цена единицы товара: {{.Price}}</li>
+    {{range  $index,$value := .Carts}}
+        <li>ID товара: {{$value.ProductID}}<br>Наименование товара: {{$value.ProductName}}<br>Цена единицы
+            товара: {{$value.Price}}<br></li>
+        <form onsubmit="event.preventDefault()">
+            <label for="price{{$index}}">Новая цена</label>
+            <input type="number" id="price{{$index}}" name="price{{$index}}">
+            <button class="button" id="patchPrice" name="patchPrice" onclick="sendPatchRequest({{$value.ProductID}},{{$index}})">Изменить цену</button>
+            <button class="button" id="delete" name="delete" onclick="sendDeleteRequest({{$value.ProductID}})">Удалить карточку</button>
+        </form>
     {{end}}
 
 </ul>
 <h1>Создать новую карточку</h1>
-<form action="/carts" method="post">
-  <label for="productName">Название товара:</label>
-  <input type="text" id="productName" name="productName" required><br><br>
-  <label for="price">Цена товара:</label>
-  <input type="number" id="price" name="price" required><br><br>
-  <input type="submit" value="Добавить карточку">
-</form><br><br>
+<form onsubmit="event.preventDefault()">
+    <label for="productName">Название товара:</label>
+    <input type="text" id="productName" name="productName" required><br><br>
+    <label for="price">Цена товара:</label>
+    <input type="number" id="price" name="price" required><br><br>
+    <button class="button" id="cartsInfo" name="cartsInfo" onclick="sendInfoForAppend()">Добавить карточку</button>
+</form>
+<br><br>
 <a href="/profile">Back to Profile</a><br>
 <a href="/logout">Logout</a>
+<script>
+    function getValuesFromInput() {
+        var val1 = document.getElementById("productName").value
+        var val2 = document.getElementById("price")
+        var number = parseInt(val2.value)
+
+        return [val1, number]
+    }
+
+    function refreshPage() {
+        location.reload()
+    }
+
+    function sendInfoForAppend() {
+        var value = getValuesFromInput();
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', window.location.href);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                // Обработка успешного ответа от сервера
+                console.log(xhr.responseText);
+                refreshPage();
+            } else {
+                // Обработка ошибки
+                console.log('Произошла ошибка. Статус: ' + xhr.status);
+            }
+        };
+        var data = {productName: value[0], price: value[1]};
+        xhr.send(JSON.stringify(data));
+    }
+
+    function getValuesFromPatchInput(index) {
+        return parseInt(document.getElementById("price" + index).value)
+    }
+
+    function sendPatchRequest(pid, index) {
+        var val = getValuesFromPatchInput(index);
+        var xhr = new XMLHttpRequest();
+        xhr.open('PATCH', window.location.href)
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                console.log(xhr.responseText)
+                refreshPage()
+            } else {
+                console.log('Ошибка вышла, bruh: ' + xhr.status)
+            }
+        }
+        data = {price: val,productID:pid}
+        xhr.send(JSON.stringify(data))
+    }
+
+    function sendDeleteRequest(pid){
+        var xhr = new XMLHttpRequest();
+        xhr.open('DELETE',window.location.href)
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                console.log(xhr.responseText)
+                refreshPage()
+            }else {
+                console.log('Ошибка вышла, bruh: ' + xhr.status)
+            }
+        }
+        data = {productID:pid}
+        xhr.send(JSON.stringify(data))
+    }
+
+
+</script>
 </body>
 </html>

@@ -15,12 +15,38 @@
     {{end}}
 </ul>
 <h1>Новый склад</h1>
-<form action="/stocks" method="post">
+<form onsubmit="event.preventDefault()">
     <label for="stockName">Название склада:</label>
     <input type="text" id="stockName" name="stockName" required><br><br>
-    <input type="submit" value="Создать">
+    <button class="button" id="newStockInfo" name="newStockInfo" onclick="sendInfoForAppend()">Создать</button>
 </form><br><br>
 <a href="/profile">Back to Profile</a><br>
 <a href="/logout">Logout</a>
+<script>
+    function getValuesFromInput() {
+        return document.getElementById("stockName").value
+    }
+
+    function refreshPage() {
+        location.reload()
+    }
+
+    function sendInfoForAppend() {
+        var val = getValuesFromInput();
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST',window.location.href);
+        xhr.setRequestHeader('Content-Type','application/json');
+        xhr.onload = function() {
+            if (xhr.status === 200){
+                console.log(xhr.responseText)
+                refreshPage()
+            }else {
+                console.log('Ошибочка вышла bruh: ' + xhr.status);
+            }
+        };
+        var data = {stockName: val};
+        xhr.send(JSON.stringify(data));
+    }
+</script>
 </body>
 </html>

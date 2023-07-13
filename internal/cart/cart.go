@@ -5,15 +5,13 @@ import (
 	"warehouse-application/pkg/database"
 )
 
-//todo переделать показ карточек для пользователя и сделать так чтобы функция передавала структуру где будет указан product id карточки
-
 //структура карточки
 
 type Cart struct {
-	ProductID   uint
+	ProductID   uint `json:"productID"`
 	UserID      uint
-	ProductName string
-	Price       uint
+	ProductName string `json:"productName"`
+	Price       uint   `json:"price"`
 }
 
 //функция добавления новой карточки
@@ -82,13 +80,32 @@ func ShowCartsOfUser(userId uint) SuperCart {
 	return result
 }
 
-func (c *Cart) AppendCartToStock(stockID, amount uint) {
+func (c *Cart) CorrectPrice() {
 	db := database.ConnectToDB()
 	defer db.Close()
 
-	data := `INSERT INTO stock(id, user_id,product_id, amount) VALUES($1,$2,$3,$4)`
+	data := `UPDATE product SET price = $1 WHERE id = $2 and user_id = $3`
 
-	if _, err := db.Exec(data, stockID, c.UserID, c.ProductID, amount); err != nil {
+	if _, err := db.Exec(data, c.Price, c.ProductID, c.UserID); err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func (c *Cart) DeleteCart() {
+	db := database.ConnectToDB()
+	defer db.Close()
+
+	data := `DELETE FROM stock WHERE product_id = $1 and user_id = $2`
+
+	if _, err := db.Exec(data, c.ProductID, c.UserID); err != nil {
+		log.Println(err)
+		return
+	}
+
+	data = `DELETE FROM product WHERE id = $1`
+
+	if _, err := db.Exec(data, c.ProductID); err != nil {
 		log.Println(err)
 		return
 	}

@@ -3,8 +3,10 @@ package helper
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 )
@@ -26,4 +28,19 @@ func LoadPage(w http.ResponseWriter, str string, data any) {
 		log.Println(err)
 		return
 	}
+}
+
+func Unmarshal(r *http.Request, structura any) *any {
+	bytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	if err := json.Unmarshal(bytes, &structura); err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	return &structura
 }

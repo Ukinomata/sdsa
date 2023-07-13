@@ -8,24 +8,94 @@
 <body>
 <h1>Содержимое склада и его карточки:</h1>
 <ul>
-    {{range $value := .Stock}}
+    {{range $index,$value := .Stock}}
         <li>ID карточки: {{$value.ProductID}}<br>
             Название карточки: {{$value.ProductName}}<br>
             Стоимость единицы товара: {{$value.Price}}<br>
-            Кол-во товара в наличии: {{$value.Amount}}<br></li>
+            Кол-во товара в наличии: {{$value.Amount}}<br>
+        </li>
+        <form onsubmit="event.preventDefault()">
+            <label for="newAmount{{$index}}">Новое кол-во:</label>
+            <input type="number" id="newAmount{{$index}}" name="newAmount{{$index}}" required><br>
+        <button class="button" id="stock" name="stock" onclick="sendPatchRequest({{$value.ProductID}},{{$index}})">Изменить количество</button>
+        </form>
+            <form onsubmit="event.preventDefault()">
+                <button class="button" id="delete" name="delete" onclick="forDeleteCartFromStock({{$value.ProductID}})">Удалить товар со склада</button>
+            </form>
     {{end}}
 </ul>
 <h1>Ваши карточки:</h1>
-    {{range $value := .Carts.Carts}}
+    {{range $index,$value := .Carts.Carts}}
         <li>ID товара: {{.ProductID}}<br>Наименование товара: {{.ProductName}}<br>Цена единицы товара: {{.Price}}</li>
-        <form method="post">
-            <label for="amount">Кол-во:</label>
-            <input type="number" id="amount" name="amount" required><br>
-                <button class="button" id="productID" name="productID" value="{{.ProductID}}">Добавить на склад </button>
+        <form onsubmit="event.preventDefault()">
+            <label for="kolvo{{$index}}">Кол-во:</label>
+            <input type="number" id="kolvo{{$index}}" name="kolvo{{$index}}" required><br>
+                <button class="button" id="productID" name="productID" onclick="sendPostRequest({{.ProductID}},{{$index}})">Добавить на склад </button>
         </form><br><br>
 {{end}}
 <a href="/stocks">Back to Stock List</a><br>
 <a href="/profile">Back to Profile</a><br>
 <a href="/logout">Logout</a>
+<script>
+    function getValueFromInput(index){
+        return parseInt(document.getElementById("newAmount"+index).value);
+    }
+
+    function refreshPage() {
+        location.reload();
+    }
+
+    function sendPatchRequest(pid,index) {
+        var newAmount = getValueFromInput(index);
+        var xhr = new XMLHttpRequest();
+        xhr.open('PATCH',window.location.href);
+        xhr.onload = function (){
+            if (xhr.status === 200) {
+                console.log(xhr.responseText)
+                refreshPage()
+            }else {
+                console.log('Ошибочка вышла, bruh: ' + xhr.status)
+            }
+        };
+        var data = {amount: newAmount,productID:pid};
+        xhr.send(JSON.stringify(data));
+
+    }
+
+    function getValueFromInputPost(index) {
+        return parseInt(document.getElementById("kolvo"+index).value);
+    }
+
+    function sendPostRequest(pid,index){
+        var Amount = getValueFromInputPost(index);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST',window.location.href)
+        xhr.onload = function (){
+            if (xhr.status === 200){
+                console.log(xhr.responseText)
+                refreshPage()
+            }else {
+                console.log('Ошибочка вышла, bruh: ' + xhr.status)
+            }
+        };
+        var data = {amount: Amount,productID: pid};
+        xhr.send(JSON.stringify(data));
+    }
+
+    function forDeleteCartFromStock(pid) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('DELETE',window.location.href)
+        xhr.onload = function (){
+            if (xhr.status === 200){
+                console.log(xhr.responseText)
+                refreshPage()
+            }else {
+                console.log('Ошибочка вышла, bruh: ' + xhr.status)
+            }
+        };
+        var data = {productID: pid}
+        xhr.send(JSON.stringify(data))
+    }
+</script>
 </body>
 </html>
