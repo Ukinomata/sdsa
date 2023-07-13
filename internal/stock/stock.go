@@ -1,9 +1,9 @@
 package stock
 
 import (
-	"log"
 	"warehouse-application/internal/cart"
 	"warehouse-application/pkg/database"
+	"warehouse-application/pkg/logging"
 )
 
 //структура для создания нового склада
@@ -15,16 +15,17 @@ type Stock struct {
 
 //функция которая создает новый склад
 
-func (s *Stock) CreateNewStock() {
+func (s *Stock) CreateNewStock(logger logging.Logger) {
 	db := database.ConnectToDB()
 	defer db.Close()
 
 	data := `INSERT INTO stock_of_user(user_id, stock_name) VALUES ($1,$2)`
 
 	if _, err := db.Exec(data, s.UserId, s.StockName); err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return
 	}
+	logger.Info("New stock is created")
 }
 
 //структура для удобного вывода складов которые есть у пользователя
@@ -35,7 +36,7 @@ type superStock struct {
 
 //склады которые есть у пользователя
 
-func ShowStocksOfUser(userID uint) superStock {
+func ShowStocksOfUser(userID uint, logger logging.Logger) superStock {
 	db := database.ConnectToDB()
 	defer db.Close()
 
@@ -43,7 +44,7 @@ func ShowStocksOfUser(userID uint) superStock {
 
 	query, err := db.Query(data, userID)
 	if err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return superStock{nil}
 	}
 
@@ -60,7 +61,7 @@ func ShowStocksOfUser(userID uint) superStock {
 
 		err = query.Scan(&stockId, &stockName)
 		if err != nil {
-			log.Println(err)
+			logger.Info(err)
 			return superStock{nil}
 		}
 
@@ -68,7 +69,7 @@ func ShowStocksOfUser(userID uint) superStock {
 
 	}
 	if query.Err() != nil {
-		log.Println(err)
+		logger.Info(err)
 		return superStock{nil}
 	}
 
@@ -87,14 +88,14 @@ type StockInfo struct {
 
 //заполнить структуру stockInfo при наличии product_id
 
-func (sI *StockInfo) FillStock() {
+func (sI *StockInfo) FillStock(logger logging.Logger) {
 	db := database.ConnectToDB()
 	defer db.Close()
 	data := `SELECT name,price FROM product WHERE id = $1`
 
 	err := db.QueryRow(data, sI.ProductID).Scan(&sI.ProductName, &sI.Price)
 	if err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return
 	}
 }
@@ -104,14 +105,14 @@ type AllInfo struct {
 	Carts cart.SuperCart
 }
 
-func ShowInfoAbountStock(stockID, userID uint) AllInfo {
+func ShowInfoAbountStock(stockID, userID uint, logger logging.Logger) AllInfo {
 	db := database.ConnectToDB()
 	defer db.Close()
 
 	data := `SELECT product_id,amount FROM stock WHERE id = $1`
 	query, err := db.Query(data, stockID)
 	if err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return AllInfo{}
 	}
 
@@ -124,34 +125,36 @@ func ShowInfoAbountStock(stockID, userID uint) AllInfo {
 
 		err = query.Scan(&stk.ProductID, &stk.Amount)
 		if err != nil {
+			logger.Info(err)
 			return AllInfo{}
 		}
-		stk.FillStock()
+		stk.FillStock(logger)
 		stk.StockID = stockID
 
 		result.Stock = append(result.Stock, stk)
 	}
 	if query.Err() != nil {
-		log.Println(err)
+		logger.Info(err)
 		return AllInfo{}
 	}
-	result.Carts = cart.ShowCartsOfUser(userID)
+	result.Carts = cart.ShowCartsOfUser(userID, logger)
 	return result
 }
 
-func (s *StockInfo) CorrectAmount() {
+func (s *StockInfo) CorrectAmount(logger logging.Logger) {
 	db := database.ConnectToDB()
 	defer db.Close()
 
 	data := `UPDATE stock SET amount = $1 WHERE id = $2 and product_id = $3`
 
 	if _, err := db.Exec(data, s.Amount, s.StockID, s.ProductID); err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return
 	}
+	logger.Info("amount is corrected")
 }
 
-func (s *StockInfo) AppendCartToStock(userID uint) {
+func (s *StockInfo) AppendCartToStock(userID uint, logger logging.Logger) {
 	db := database.ConnectToDB()
 	defer db.Close()
 
@@ -163,19 +166,21 @@ WHERE NOT EXISTS(
 ) `
 
 	if _, err := db.Exec(data, s.StockID, userID, s.ProductID, s.Amount); err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return
 	}
+	logger.Info("cart has been added to stock")
 }
 
-func (s *StockInfo) DeleteFromStock() {
+func (s *StockInfo) DeleteFromStock(logger logging.Logger) {
 	db := database.ConnectToDB()
 	defer db.Close()
 
 	data := `DELETE FROM stock WHERE id = $1 and product_id = $2`
 
 	if _, err := db.Exec(data, s.StockID, s.ProductID); err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return
 	}
+	logger.Info("cart has been deleted from stock")
 }

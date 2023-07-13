@@ -7,6 +7,6 @@ import (
 
 func main() {
 	logger := logging.GetLogger()
-	logger.Info("start app")
-	server.StartServer()
+	logger.Info("start application")
+	server.StartServer(logger)
 }

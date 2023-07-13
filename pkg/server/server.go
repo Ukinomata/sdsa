@@ -1,35 +1,49 @@
 package server
 
 import (
-	"fmt"
 	"github.com/gorilla/sessions"
-	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"warehouse-application/internal/cart"
+	"warehouse-application/internal/handlers"
 	"warehouse-application/internal/stock"
 	"warehouse-application/internal/user"
 	"warehouse-application/pkg/helper"
+	"warehouse-application/pkg/logging"
 )
 
 var store *sessions.CookieStore
 
-func StartServer() {
+func StartServer(logger logging.Logger) {
 	store = sessions.NewCookieStore([]byte("ukinoshito-ukino"))
-	_ = store
-	http.HandleFunc("/signup", signUpHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/profile", profileHandler)
-	http.HandleFunc("/logout", logountHandler)
-	http.HandleFunc("/stocks", stocksHandler)
-	http.HandleFunc("/carts", cartsHandler)
-	http.HandleFunc("/stockinfo", stockInfoHandler)
 
-	log.Fatal(http.ListenAndServe("localhost:8080", nil))
+	newHandler := NewHandler(logger)
+	newHandler.Register()
+
+	logger.Fatal(http.ListenAndServe("localhost:8080", nil))
+}
+
+type handler struct {
+	logger logging.Logger
+}
+
+func NewHandler(logger logging.Logger) handlers.Handler {
+	return &handler{logger: logger}
+}
+
+func (h *handler) Register() {
+	http.HandleFunc("/signup", h.signUpHandler)
+	http.HandleFunc("/login", h.loginHandler)
+	http.HandleFunc("/profile", h.profileHandler)
+	http.HandleFunc("/logout", h.logountHandler)
+	http.HandleFunc("/stocks", h.stocksHandler)
+	http.HandleFunc("/carts", h.cartsHandler)
+	http.HandleFunc("/stockinfo", h.stockInfoHandler)
 }
 
 // для регистрации пользователя
-func signUpHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handler) signUpHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		username := r.FormValue("username")
@@ -47,10 +61,10 @@ func signUpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // выйти из профиля
-func logountHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handler) logountHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		log.Println(err)
+		h.logger.Info(err)
 		return
 	}
 
@@ -66,7 +80,7 @@ func logountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // войти в профиль
-func loginHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handler) loginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		username := r.FormValue("username")
@@ -78,14 +92,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		err := usr.CorrectData()
 
 		if err != nil {
-			log.Println(err)
+			h.logger.Info(err)
 			return
 		}
 
 		session, err := store.Get(r, "session-name")
 
 		if err != nil {
-			log.Println(err)
+			h.logger.Info(err)
 			return
 		}
 
@@ -93,7 +107,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		err = session.Save(r, w)
 
 		if err != nil {
-			log.Println(err)
+			h.logger.Info(err)
 			return
 		}
 
@@ -105,16 +119,15 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // главная страница
-func profileHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handler) profileHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session-name")
 
 	if err != nil {
-		log.Println(err)
+		h.logger.Info(err)
 		return
 	}
 
 	userID, ok := session.Values["userID"].(uint)
-	//fmt.Println(ok)
 	if !ok {
 		http.Redirect(w, r, "/login", http.StatusUnauthorized)
 		return
@@ -127,10 +140,10 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // страница с карточками +
-func cartsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handler) cartsHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		log.Println(err)
+		h.logger.Info(err)
 		return
 	}
 
@@ -141,49 +154,42 @@ func cartsHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPatch:
-		fmt.Println("IT IS METHOD PATCH")
 		crt := &cart.Cart{
 			UserID: userID,
 		}
 
 		helper.Unmarshal(r, crt)
 
-		crt.CorrectPrice()
+		crt.CorrectPrice(h.logger)
 
-		fmt.Println(crt)
 	case http.MethodDelete:
-		fmt.Println("IT IS METHOD DELETE")
 		crt := &cart.Cart{
 			UserID: userID,
 		}
 
 		helper.Unmarshal(r, crt)
 
-		crt.DeleteCart()
+		crt.DeleteCart(h.logger)
 
-		fmt.Println(crt)
 	case http.MethodPost:
-		fmt.Println("IT IS POST")
 		crt := &cart.Cart{
 			UserID: userID,
 		}
 
 		helper.Unmarshal(r, crt)
 
-		fmt.Println(crt)
-		crt.AppendCartToDB()
+		crt.AppendCartToDB(h.logger)
 		return
 	default:
-		fmt.Println("IT IS DEFAULT")
-		helper.LoadPage(w, "carts", cart.ShowCartsOfUser(userID))
+		helper.LoadPage(w, "carts", cart.ShowCartsOfUser(userID, h.logger))
 	}
 }
 
 // страница со складами +
-func stocksHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handler) stocksHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		log.Println(err)
+		h.logger.Info(err)
 		return
 	}
 
@@ -196,27 +202,24 @@ func stocksHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
-		fmt.Println("IT IS POST")
 		stck := &stock.Stock{
 			UserId: userID,
 		}
 
 		helper.Unmarshal(r, stck)
-		fmt.Println(stck)
-		stck.CreateNewStock()
+		stck.CreateNewStock(h.logger)
 		return
 	default:
-		fmt.Println("IT IS DEFAULT")
-		helper.LoadPage(w, "stocks", stock.ShowStocksOfUser(userID))
+		helper.LoadPage(w, "stocks", stock.ShowStocksOfUser(userID, h.logger))
 	}
 
 }
 
 // добавление и изменение карточек на складах
-func stockInfoHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handler) stockInfoHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		log.Println(err)
+		h.logger.Info(err)
 		return
 	}
 
@@ -226,50 +229,37 @@ func stockInfoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	st := r.URL.String()
-	stockID, _ := strconv.Atoi(string(st[len(st)-1]))
+	st := strings.ReplaceAll(r.URL.String(), "/stockinfo?button=", "")
+	stockID, _ := strconv.Atoi(st)
 
 	switch r.Method {
 	case http.MethodDelete:
-		fmt.Println("IT IS DELETE METHOD")
 		stk := &stock.StockInfo{
 			StockID: uint(stockID),
 		}
 
 		helper.Unmarshal(r, stk)
 
-		fmt.Println(stk)
-		stk.DeleteFromStock()
-
+		stk.DeleteFromStock(h.logger)
+		return
 	case http.MethodPatch:
-		fmt.Println("IT IS PATCH")
 		stk := &stock.StockInfo{
 			StockID: uint(stockID),
 			Amount:  0,
 		}
 
 		helper.Unmarshal(r, stk)
-		fmt.Println(stk)
-		stk.CorrectAmount()
+		stk.CorrectAmount(h.logger)
 		return
 	case http.MethodPost:
-		fmt.Println("IT IS POST METHOD")
 		stk := &stock.StockInfo{
 			StockID: uint(stockID),
 		}
 
 		helper.Unmarshal(r, stk)
-		fmt.Println(stk)
-		stk.AppendCartToStock(userID)
+		stk.AppendCartToStock(userID, h.logger)
 		return
 	default:
-		fmt.Println("IT IS DEFAULT METHOD")
-		helper.LoadPage(w, "stockinfo", stock.ShowInfoAbountStock(uint(stockID), userID))
+		helper.LoadPage(w, "stockinfo", stock.ShowInfoAbountStock(uint(stockID), userID, h.logger))
 	}
 }
-
-//todo добавить новый логгер, создать отдельную директорию под ошибки,  и удалять карточки
-
-//todo после добавления товара и сразу изменения его количества добавляется новый товар.Думаю нужно переписать передачу данных на java script вместо html
-
-//todo реализовать получение данных с бд с использованием java script

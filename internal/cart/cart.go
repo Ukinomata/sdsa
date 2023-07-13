@@ -1,8 +1,8 @@
 package cart
 
 import (
-	"log"
 	"warehouse-application/pkg/database"
+	"warehouse-application/pkg/logging"
 )
 
 //структура карточки
@@ -16,16 +16,17 @@ type Cart struct {
 
 //функция добавления новой карточки
 
-func (c *Cart) AppendCartToDB() {
+func (c *Cart) AppendCartToDB(logger logging.Logger) {
 	db := database.ConnectToDB()
 	defer db.Close()
 
 	data := `INSERT INTO product(user_id, name, price) VALUES($1,$2,$3)`
 
 	if _, err := db.Exec(data, c.UserID, c.ProductName, c.Price); err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return
 	}
+	logger.Info("cart has been added to DB")
 }
 
 //структура для удобного вывода всех карточек пользователя
@@ -40,7 +41,7 @@ type SuperCart struct {
 
 //функция для показа всех карточек которые есть у пользователя
 
-func ShowCartsOfUser(userId uint) SuperCart {
+func ShowCartsOfUser(userId uint, logger logging.Logger) SuperCart {
 	db := database.ConnectToDB()
 	defer db.Close()
 
@@ -51,7 +52,7 @@ func ShowCartsOfUser(userId uint) SuperCart {
 	query, err := db.Query(data, userId)
 
 	if err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return SuperCart{nil}
 	}
 
@@ -67,46 +68,49 @@ func ShowCartsOfUser(userId uint) SuperCart {
 
 		err = query.Scan(&cart.ProductID, &cart.ProductName, &cart.Price)
 		if err != nil {
-			log.Println(err)
+			logger.Info(err)
 			return SuperCart{nil}
 		}
 		result.Carts = append(result.Carts, cart)
 	}
 	if query.Err() != nil {
-		log.Println(err)
+		logger.Info(query.Err())
 		return SuperCart{nil}
 	}
 
 	return result
 }
 
-func (c *Cart) CorrectPrice() {
+func (c *Cart) CorrectPrice(logger logging.Logger) {
 	db := database.ConnectToDB()
 	defer db.Close()
 
 	data := `UPDATE product SET price = $1 WHERE id = $2 and user_id = $3`
 
 	if _, err := db.Exec(data, c.Price, c.ProductID, c.UserID); err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return
 	}
+	logger.Info("price has been corrected")
 }
 
-func (c *Cart) DeleteCart() {
+func (c *Cart) DeleteCart(logger logging.Logger) {
 	db := database.ConnectToDB()
 	defer db.Close()
 
 	data := `DELETE FROM stock WHERE product_id = $1 and user_id = $2`
 
 	if _, err := db.Exec(data, c.ProductID, c.UserID); err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return
 	}
 
 	data = `DELETE FROM product WHERE id = $1`
 
 	if _, err := db.Exec(data, c.ProductID); err != nil {
-		log.Println(err)
+		logger.Info(err)
 		return
 	}
+
+	logger.Info("cart has been deleted")
 }
